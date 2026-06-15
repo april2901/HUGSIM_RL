@@ -1,0 +1,24 @@
+mode: easy_00
+plan_list:
+- - -4.81
+  - 67.20
+  - -0.30
+  - -0.020796326794896514
+  - 2.2
+  - "2024_04_22_10_35_34"
+  - AttackPlanner
+  - pred_steps: 20
+    ATTACK_FREQ: 10
+    best_k: 10
+load_HD_map: false
+start_euler:
+- 0.0
+- 0.0
+- 0.0
+start_ab:
+- 0.0
+- 0.0
+start_velo: 1
+start_steer: 0
+scene_name: "1179959"
+iteration: 30000

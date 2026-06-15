@@ -8,7 +8,19 @@ from tqdm import tqdm
 from unidepth.models import UniDepthV2
 from PIL import Image
 import json
+# --- [핵심] 정식 xformers 함수 가로채기 (Turing GPU 한계 극복) ---
+import xformers.ops
+def fallback_attention(query, key, value, attn_bias=None, p=0.0, scale=None, *args, **kwargs):
+    import torch.nn.functional as F
+    q = query.transpose(1, 2)
+    k = key.transpose(1, 2)
+    v = value.transpose(1, 2)
+    # PyTorch 2.0+ 기본 내장 고속 어텐션 (SDPA)
+    out = F.scaled_dot_product_attention(q, k, v, attn_mask=attn_bias, dropout_p=p, scale=scale)
+    return out.transpose(1, 2)
 
+xformers.ops.memory_efficient_attention = fallback_attention
+# ------------------------------------------------------------------
 
 def get_opts():
     parser = argparse.ArgumentParser()

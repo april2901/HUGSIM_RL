@@ -13,3 +13,9 @@ apex
 # pixi environments
 .pixi
 *.egg-info
+data/waymo/raw/
+data/waymo/processed/
+output/
+outputs/
+export/
+navsim/

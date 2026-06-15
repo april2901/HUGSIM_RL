@@ -7,3 +7,4 @@ uc_reg: False
 uc_fit_iter: 100
 ignore_dynamic: False
 data_type: waymo
+uc_opt_pos: False
