@@ -339,7 +339,8 @@ document.getElementById("generate_btn").addEventListener("click", function () {
         car_speed.innerHTML = "<input type='range' min='0' max='4' step='0.1' value='2'><span class='value-display'>2</span>";
         car_type.innerHTML = "<select><option>Constant</option>\
                             <option>IDM</option>\
-                            <option>Attack</option></select>";
+                            <option>Attack</option>\
+                            <option>RLAttack</option></select>";
         car_kwargs.className = "car_kwargs";
         car_kwargs.innerHTML = "None";
         car_btn.innerHTML = "<button class='update_btn'>update</button> <button class='delete_btn'>delete</button>";
