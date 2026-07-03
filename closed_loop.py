@@ -45,15 +45,19 @@ def create_gym_env(cfg, output):
         os.mkfifo(plan_pipe)
     print('Ready for simulation')
 
-    obs, info = None, None
     while not done:
-
         if obs is None or info is None:
             obs, info = env.reset()
+
         observations_save.append(obs['rgb'])
         infos_save.append(info)
 
-        print('ego pose', info['ego_pos'])
+        print('ego pose', info['ego_pos'], 'velo', info['ego_velo'], 'steer', info['ego_steer'])
+
+        with open(obs_pipe, "wb") as pipe:
+            pipe.write(pickle.dumps((obs, info)))
+        with open(plan_pipe, "rb") as pipe:
+            plan_traj = pickle.loads(pipe.read())
 
         with open(obs_pipe, "wb") as pipe:
             pipe.write(pickle.dumps((obs, info)))

@@ -10,7 +10,7 @@ from trajdata import AgentType, UnifiedDataset
 from trajdata.maps import MapAPI
 from trajdata.simulation import SimulationScene
 from sim.utils.sim_utils import rt2pose, pose2rt
-from sim.utils.agent_controller import IDM, AttackPlanner, ConstantPlanner, UnicyclePlanner
+from sim.utils.agent_controller import IDM, AttackPlanner, ConstantPlanner, UnicyclePlanner, RLAttackPlanner
 import os
 import json
 
@@ -108,12 +108,19 @@ class planner:
                 next_xyrv = controller.update(state=stat[[0, 1, 3, 4]], unified_map=self.unified_map, dt=0.1,
                                               neighbors=safe_neighbors, attacked_states=future_states[0],
                                               new_plan=((t // self.dt) % self.ATTACK_FREQ == 0))
+            elif type(controller) is RLAttackPlanner:
+                safe_neighbors = neighbors[1:, ...]
+                next_xyrv = controller.update(state=stat[[0, 1, 3, 4]], unified_map=self.unified_map, dt=0.1,
+                                              neighbors=safe_neighbors, attacked_states=future_states[0],
+                                              new_plan=((t // self.dt) % self.ATTACK_FREQ == 0))
             elif type(controller) is ConstantPlanner:
                 next_xyrv = controller.update(state=stat[[0, 1, 3, 4]], dt=self.dt)
             elif type(controller) is UnicyclePlanner:
                 next_xyrv = controller.update(dt=self.dt)
             else:
                 raise NotImplementedError
+            if next_xyrv.device != stat.device:
+                next_xyrv = next_xyrv.to(stat.device)
             next_stat = torch.zeros_like(stat)
             next_stat[[0, 1, 3, 4]] = next_xyrv.float()
             next_stat[2] = stat[2]

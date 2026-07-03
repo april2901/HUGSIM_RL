@@ -8,6 +8,7 @@ import time
 import math
 from copy import deepcopy
 from utils.dynamic_utils import unicycle
+from stable_baselines3 import PPO
 
 
 def constant_tracking(state, path, dt):
@@ -321,3 +322,80 @@ class UnicyclePlanner:
         a, b, v, pitchroll, yaw, h = self.uc_model.forward(self.t)
         # return torch.tensor([a, b, yaw, v]), pitchroll.detach().cpu(), h.item()
         return torch.tensor([a, b, yaw, v])
+
+
+class RLAttackPlanner:
+    def __init__(self, weight_path="/mnt/sda/projects/hugsim/HUGSIM/simple_attacker_ppo.zip", dt=0.1, device='cuda'):
+        self.device = device
+        self.dt = dt
+        
+        # 1. 오프라인에서 학습된 RL 모델 가중치 불러오기
+        self.model = PPO.load(weight_path, device=self.device)
+        
+    def update(
+            self, state, unified_map, dt,
+            neighbors, attacked_states,
+            new_plan=True
+    ):
+        '''
+        기존 AttackPlanner와 동일한 입력값을 받습니다.
+        '''
+        
+        # 1. 상태 관측(Observation) 구성하기
+        # HUGSIM이 주는 날것의 데이터를 RL 모델이 학습했던 형태(State Vector)로 가공합니다.
+        # 예: 현재 내 위치를 기준으로 상대 좌표계 변환
+        obs = self._make_observation(state, neighbors, attacked_states)
+        
+        # 2. RL 모델로 추론 (Inference)
+        # "현재 상황이 이런데, 가속도랑 조향각을 어떻게 할까?"
+        # deterministic=True 를 주어 학습된 최적의 행동만 일관되게 뽑아냅니다.
+        action, _states = self.model.predict(obs, deterministic=True)
+        
+        # action은 예를 들어 [acceleration, steering_rate] 형태
+        accel, steer = action[0], action[1]
+        
+        # 3. 모델의 행동을 바탕으로 다음 프레임의 위치(Next State) 계산
+        # (Kinematic Bicycle Model 적용)
+        next_state = self._apply_kinematics(state, accel, steer, self.dt)
+        
+        # HUGSIM 시뮬레이터에게 "나 다음 프레임에 여기로 갈게" 하고 반환
+        return next_state
+
+    def _make_observation(self, state, neighbors, attacked_states):
+        # attacked_states: ego의 미래 궤적 (T, [x, y, yaw, v])
+        # constant_headaway나 navsim에서 계산된 ego의 동적 움직임을 활용합니다.
+        # AttackPlanner와 유사하게 ego의 전체 미래 궤적을 고려합니다.
+        
+        if torch.is_tensor(state):
+            state = state.detach().cpu().numpy()
+        if torch.is_tensor(attacked_states):
+            attacked_states = attacked_states.detach().cpu().numpy()
+
+        attacker_state = np.asarray(state, dtype=np.float32)
+        
+        if attacked_states is None or attacked_states.size == 0:
+            # fallback: 기본값
+            ego_info = np.zeros(4, dtype=np.float32)
+        else:
+            # ego의 미래 궤적에서 현재와 최종 목표 위치를 추출
+            # 현재 ego 위치 + 미래 예측 위치를 고려하여 공격 전략 수립
+            ego_current = attacked_states[0, :2]   # 현재 ego 위치
+            ego_future = attacked_states[-1, :2]   # 최종 예상 위치
+            ego_info = np.concatenate([ego_current, ego_future], axis=0).astype(np.float32)
+
+        obs = np.concatenate([attacker_state, ego_info], axis=0).astype(np.float32)
+        return obs
+
+    def _apply_kinematics(self, state, accel, steer, dt):
+        if torch.is_tensor(state):
+            state = state.detach().cpu().numpy()
+
+        x, y, yaw, v = state
+        L = 2.8
+
+        next_x = x + v * np.cos(yaw) * dt
+        next_y = y + v * np.sin(yaw) * dt
+        next_yaw = yaw + (v / L) * np.tan(steer) * dt
+        next_v = np.clip(v + accel * dt, 0.0, 30.0)
+
+        return torch.tensor([next_x, next_y, next_yaw, next_v], dtype=torch.float32, device=self.device)
