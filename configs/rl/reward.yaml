@@ -1,0 +1,11 @@
+# RL attacker reward weights and shaping params.
+# Tune weights here instead of editing rl_attack_env.py.
+
+weights:
+  approach: 1.5
+  collision: 2.0
+
+params:
+  approach_scale: 8.0   # approach_reward = closing / approach_scale
+  collision_bonus: 50.0  # added when dist < collision_dist
+  collision_dist: 2.0

@@ -122,7 +122,10 @@ class IDM:
         '''
 
         if path is None:
-            return deepcopy(state)
+            new_state = deepcopy(state)
+            new_state[0] = state[0] - state[3] * torch.sin(state[2]) * dt
+            new_state[1] = state[1] + state[3] * torch.cos(state[2]) * dt
+            return new_state
 
         # find the nearest point in the path
         dists = torch.norm(path[:, :2] - state[None, :2], dim=1)

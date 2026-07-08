@@ -3,6 +3,7 @@
 .idea
 .DS_Store
 .nfs*
+.yaml
 __pycache__
 *.pth
 output

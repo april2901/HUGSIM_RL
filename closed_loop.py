@@ -27,6 +27,14 @@ def to_video(observations, output_path):
     clip.write_videofile(output_path)
 
 
+def _reset_pipes(output):
+    os.makedirs(output, exist_ok=True)
+    for name in ("obs_pipe", "plan_pipe"):
+        pipe_path = os.path.join(output, name)
+        if os.path.exists(pipe_path):
+            os.remove(pipe_path)
+
+
 def create_gym_env(cfg, output):
 
     env = gymnasium.make('hugsim_env/HUGSim-v0', cfg=cfg, output=output)
@@ -137,7 +145,7 @@ if __name__ == "__main__":
     cfg.update(model_config)
     
     output = os.path.join(cfg.base.output_dir, cfg.scenario.scene_name+"_"+cfg.scenario.mode)
-    os.makedirs(output, exist_ok=True)
+    _reset_pipes(output)
 
     if args.ad == 'uniad':
         ad_path = cfg.base.uniad_path
